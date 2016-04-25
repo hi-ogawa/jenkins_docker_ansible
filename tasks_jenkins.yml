@@ -1,0 +1,50 @@
+---
+- name: set jenkins apt key
+  apt_key: url='http://pkg.jenkins-ci.org/debian/jenkins-ci.org.key' state=present
+
+- name: set jenkins apt repository
+  apt_repository: repo='deb http://pkg.jenkins-ci.org/debian binary/' state=present
+
+- name: apt-get update
+  apt: update_cache=yes cache_valid_time=36000
+
+- name: install java
+  apt: name={{ item }} state=present
+  with_items:
+    - openjdk-7-jre
+    - openjdk-7-jdk
+
+- name: install jenkins
+  apt: name={{ item }} state=present
+  with_items:
+    - jenkins
+
+- name: restart jenkins
+  service: name=jenkins state=started
+
+# nginx proxy for opening jenkins on 80
+- name: install nginx
+  apt: name=nginx state=present
+
+- name: remove default nginx config
+  file: path={{ item }} state=absent
+  with_items:
+    - /etc/nginx/sites-available/default
+    - /etc/nginx/sites-enabled/default
+
+- name: jenkins proxy configuarion available
+  template:
+    src: templates/jenkins.conf.j2
+    dest: /etc/nginx/sites-available/jenkins.conf
+  vars:
+    server_name: '{{ nginx_server_name }}'
+
+- name: enable jenkins proxy
+  file:
+    src: '/etc/nginx/sites-available/jenkins.conf'
+    path: '/etc/nginx/sites-enabled/jenkins.conf'
+    state: link
+    force: yes
+
+- name: restart nginx
+  service: name=nginx state=restarted

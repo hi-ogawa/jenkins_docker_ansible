@@ -1,0 +1,32 @@
+- hosts: all
+  user: ubuntu
+  become: yes
+  vars_files:
+    - vars_main.yml
+  tasks:
+    # common
+    - name: apt-get update
+      apt: update_cache=yes cache_valid_time=36000
+
+    - name: install common libraries
+      apt: name={{ item }} state=present
+      with_items:
+        - git-core
+        - htop
+        - build-essential
+
+    # jenkins
+    - include: tasks_jenkins.yml
+
+    # docker
+    - include: tasks_docker.yml
+
+    - name: add ubuntu to docker group
+      user:
+        append: yes
+        name: '{{ item }}'
+        group: docker
+        state: present
+      with_items:
+        - ubuntu
+        - jenkins
